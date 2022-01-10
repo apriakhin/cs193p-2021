@@ -8,89 +8,54 @@
 import SwiftUI
 
 struct ContentView: View {
-    let themes = [
-        Theme(
-            title: "Vehicles",
-            icon: "car",
-            emojis: ["🚜", "🚗", "🚕", "🚙", "🚌", "🚎", "🏎", "🚓", "🚑", "🚚", "🛻", "🚐"]
-        ),
-        Theme(
-            title: "Clothes",
-            icon: "tshirt",
-            emojis: ["🧥", "🦺", "🥼", "👚", "👕", "👖", "🩳", "👗", "👔", "👘"]
-        ),
-        Theme(
-            title: "Animals",
-            icon: "pawprint",
-            emojis: ["🐶", "🐱", "🐭", "🐰", "🦊", "🐻", "🐯", "🐵", "🐷", "🐮", "🦁"]
-        ),
-    ]
-    
-    @State var emojis = ["🚜", "🚗", "🚕", "🚙", "🚌", "🚎", "🏎", "🚓", "🚑", "🚚", "🛻", "🚐"]
-    @State var emojiCount = 4
+    @ObservedObject var viewModel: EmojiMemoryGame
     
     var body: some View {
         VStack {
-            Text("Memorize!")
+            Text(viewModel.themeName)
                 .font(.largeTitle)
-
-            ScrollView {
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: widthThatBestFits(cardCount: emojiCount)))]) {
-                    ForEach(emojis[0..<emojiCount], id: \.self) { emoji in
-                        CardView(content: emoji)
-                            .aspectRatio(2/3, contentMode: .fit)
-                    }
-                }
-            }
-            .foregroundColor(.red)
             
-            bottomBar
-        }
-        .padding(.horizontal)
-    }
-    
-    var bottomBar: some View {
-        HStack {
-            ForEach(themes, id: \.title) { theme in
-                Button(action: {
-                    emojis = theme.emojis.shuffled()
-                    emojiCount = Int.random(in: 4...emojis.count)
-                }) {
-                    VStack {
-                        Image(systemName: theme.icon)
-                            .font(.largeTitle)
-                        Text(theme.title)
-                            .font(.caption)
+            ScrollView {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 65))]) {
+                    ForEach(viewModel.cards) { card in
+                        CardView(card: card)
+                            .aspectRatio(2/3, contentMode: .fit)
+                            .onTapGesture {
+                                viewModel.choose(card)
+                            }
                     }
                 }
-                .padding(.horizontal)
             }
+            .foregroundColor(viewModel.themeColor)
+            .padding(.horizontal)
+            
+            HStack {
+                Text("Score: \(viewModel.score)")
+                
+                Spacer()
+                
+                Button("New Game", action: viewModel.startNewGame)
+            }
+            .padding()
         }
-    }
-    
-    func widthThatBestFits(cardCount: Int) -> CGFloat {
-        let count = CGFloat(cardCount < 4 ? 4 : cardCount)
-        return (UIScreen.main.bounds.width) / count
     }
 }
 
 struct CardView: View {
-    var content: String
-    @State var isFaceUp = true
+    let card: MemoryGame<String>.Card
     
     var body: some View {
         ZStack {
             let shape = RoundedRectangle(cornerRadius: 20)
-            if isFaceUp {
+            if card.isFaceUp {
                 shape.fill().foregroundColor(.white)
                 shape.strokeBorder(lineWidth: 3)
-                Text(content).font(.largeTitle)
+                Text(card.content).font(.largeTitle)
+            } else if card.isMatched {
+                shape.opacity(0)
             } else {
                 shape.fill()
             }
-        }
-        .onTapGesture {
-            isFaceUp = !isFaceUp
         }
     }
 }
@@ -103,9 +68,12 @@ struct Theme {
 
 struct ContentView_Previews: PreviewProvider {
     static var previews: some View {
-        ContentView()
+        let game = EmojiMemoryGame()
+        
+        ContentView(viewModel: game)
             .preferredColorScheme(.dark)
-        ContentView()
+        
+        ContentView(viewModel: game )
             .preferredColorScheme(.light)
     }
 }
